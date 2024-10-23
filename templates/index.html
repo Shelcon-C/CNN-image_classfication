@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>陈氏图片分类展示</title>
+    <style>
+        #drop-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin: 20px;
+            min-height: 200px; /* 增加高度 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #drop-area.highlight {
+            border-color: purple;
+        }
+
+        #preview {
+            max-width: 100%;  /* 保证图片不会超出容器宽度 */
+            max-height: 150px;  /* 限制预览图像的高度 */
+            display: block;
+            margin-top: 20px;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        label {
+            cursor: pointer;
+            display: inline-block;
+            margin-top: 10px;
+        }
+    </style>
+    <script>
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function highlight(e) {
+            document.getElementById('drop-area').classList.add('highlight');
+        }
+
+        function unhighlight(e) {
+            document.getElementById('drop-area').classList.remove('highlight');
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            const file = files[0];
+            previewFile(file);  // 显示图像预览
+            uploadFile(file);   // 上传文件进行预测
+        }
+
+        function previewFile(file) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onloadend = function() {
+                const img = document.getElementById('preview');
+                img.src = reader.result;
+            }
+        }
+
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/predict', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                document.getElementById("result").innerText = "预测类别: " + data.predicted_class;
+            } else {
+                document.getElementById("result").innerText = "错误: " + data.error;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropArea = document.getElementById('drop-area');
+
+            // 阻止默认行为
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            // 高亮显示拖拽区域
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+
+            // 取消高亮显示
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+
+            // 处理文件拖放
+            dropArea.addEventListener('drop', handleDrop, false);
+        });
+    </script>
+</head>
+<body>
+    <h1>陈氏图片分类展示</h1>
+
+    <!-- 拖拽上传区域 -->
+    <div id="drop-area">
+        <p>拖拽图片到此区域，或点击选择文件</p>
+        <input type="file" id="file-input" accept="image/*" onchange="handleFiles(this.files)">
+        <label for="file-input">选择文件</label>
+        <img id="preview" src="" alt="Image preview..." />
+    </div>
+
+    <br>
+    <h3 id="result"></h3>
+
+</body>
+</html>
